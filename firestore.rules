@@ -8,29 +8,55 @@ service cloud.firestore {
         && request.auth.uid == "FhVg6EpradNuZhUd63Cd4grkLbk2";
     }
 
-    // Reservas públicas: cualquier visitante puede crear una reserva nueva,
-    // pero nunca modificar o borrar una reserva existente.
+    // Compatibilidad/migración de la V6 anterior.
+    // El público ya no puede leer ni escribir esta colección.
     match /rifa/{numero} {
-      allow read: if true;
+      allow read, write: if isAdmin();
+    }
 
+    // Cada modalidad de rifa tiene su propia colección.
+    // Así 00–99, 0–9 y combos son completamente independientes.
+    match /rifa_normal/{numero} {
+      allow read: if true;
       allow create: if
-        !exists(/databases/$(database)/documents/rifa/$(numero))
+        !exists(/databases/$(database)/documents/rifa_normal/$(numero))
         && request.resource.data.nombre is string
         && request.resource.data.telefono is string
         && request.resource.data.numero is string
         && (request.resource.data.fecha is timestamp || request.resource.data.fecha is string)
         && request.resource.data.pagado == false;
-
       allow update, delete: if isAdmin();
     }
 
-    // Configuración: pública para lectura, exclusiva del administrador para escritura.
+    match /rifa_mini/{numero} {
+      allow read: if true;
+      allow create: if
+        !exists(/databases/$(database)/documents/rifa_mini/$(numero))
+        && request.resource.data.nombre is string
+        && request.resource.data.telefono is string
+        && request.resource.data.numero is string
+        && (request.resource.data.fecha is timestamp || request.resource.data.fecha is string)
+        && request.resource.data.pagado == false;
+      allow update, delete: if isAdmin();
+    }
+
+    match /rifa_combo/{combo} {
+      allow read: if true;
+      allow create: if
+        !exists(/databases/$(database)/documents/rifa_combo/$(combo))
+        && request.resource.data.nombre is string
+        && request.resource.data.telefono is string
+        && request.resource.data.numero is string
+        && (request.resource.data.fecha is timestamp || request.resource.data.fecha is string)
+        && request.resource.data.pagado == false;
+      allow update, delete: if isAdmin();
+    }
+
     match /config/{documento} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // Todo lo demás queda bloqueado.
     match /{document=**} {
       allow read, write: if false;
     }
